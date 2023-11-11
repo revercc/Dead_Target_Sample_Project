@@ -65,22 +65,25 @@ void DrawESP(NepEsp esp, int screenWidth, int screenHeight) {
                     //获得视图矩阵 viewMatrix
                     Matrix4x4 viewMatrix = get_worldToCameraMatrix(Cam);
 
-                    //获得projectionMatrix
+                    //获得裁剪（投影）矩阵projectionMatrix
                     Matrix4x4 projectionMatrix = get_projectionMatrix(Cam);
 
-                    // vp 矩阵
+                    // vp 组合矩阵
                     Matrix4x4 Matix_VP_LastFrame =  viewMatrix * projectionMatrix;
 
+                    // 世界坐标
                     Vector4* tmp_pos = new Vector4(PlayerPos.x, PlayerPos.y, PlayerPos.z, 1);
 
+                    // vp组合矩阵 * 世界坐标 == 裁剪坐标（投影坐标）
                     Vector4 clipPos = *tmp_pos * Matix_VP_LastFrame;
-                    // 获取的x,y是比例，需要*屏幕大小
+
+                    // 投影坐标经过透视除法后得到 屏幕坐标比例值，x与y是比例，需要*屏幕的宽度和高度
+                    // w < 0则说明物体不再视角范围内，不需要在屏幕中显示
                     float x = 0.5f + 0.5f * clipPos.x / clipPos.w;
                     float y = 0.5f + 0.5f * clipPos.y / clipPos.w;
 
-
-
                     //如果离相机的位置很近就不画了
+                    // clipPos.w < 1.f 也可以
                     if (PosNew.z < 1.f) continue;
                     //More Code Here
                     //画线的起点：屏幕的上方中间位置
