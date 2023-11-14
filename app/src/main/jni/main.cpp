@@ -57,14 +57,14 @@ void DrawESP(NepEsp esp, int screenWidth, int screenHeight) {
                 //获得相机对象
                 void *Cam = get_camera();
                 if(Cam){
-                    __android_log_print(ANDROID_LOG_DEBUG, "reverccqin", "Cam : %p", Cam);
                     //将世界坐标转化为屏幕坐标(内部通过相机对象获取其中的viewMatrix视图矩阵，然后与世界坐标进行矩阵转换后得到屏幕坐标
                     Vector3 PosNew = WorldToScreenPoint(Cam, PlayerPos);
 
-
+                    //{{'libunity.so:bss','Cb',},{0x6C600,0x1A58,0x18,0x6C,}},
                     //获得视图矩阵 viewMatrix
                     Matrix4x4 viewMatrix = get_worldToCameraMatrix(Cam);
 
+                    //{{'libunity.so:bss','Cb',},{0x6C600,0x1A58,0x18,0xaC,}},
                     //获得裁剪（投影）矩阵projectionMatrix
                     Matrix4x4 projectionMatrix = get_projectionMatrix(Cam);
 
@@ -90,7 +90,7 @@ void DrawESP(NepEsp esp, int screenWidth, int screenHeight) {
                     Vector2 DrawFrom = Vector2(screenWidth / 2, 0);
                     //画线的终点
                     Vector2 DrawTo = Vector2((screenWidth - (screenWidth - x * screenWidth)) + 5,
-                                             (screenHeight - y * screenHeight - 80.0f));
+                                             (screenHeight - y * screenHeight));
                     if (ESPLine) {
                         esp.DrawLine(Color::Red(), 2, DrawFrom, DrawTo);
                     }
@@ -130,6 +130,14 @@ void _update(void *player) {
     }
 }
 
+void (*destroy)(void *player);
+void _destroy(void *player) {
+    if (player != NULL) {
+        destroy(player);
+        espManager->removeEnemyGivenObject(player);
+    }
+}
+
 
 void *hack_thread(void *) {
     ProcMap il2cppMap;
@@ -143,8 +151,9 @@ void *hack_thread(void *) {
         sleep(1);
     } while (!isLibraryLoaded (OBFUSCATE("libMyLibName.so")));
 
-    
-    MSHookFunction((void *) getAbsoluteAddress("libil2cpp.so", 0x973E3C), (void *) &_update, (void **) &update);
+
+    MSHookFunction((void *) getAbsoluteAddress("libil2cpp.so", 0x4F0650), (void *) &_update, (void **) &update);
+    MSHookFunction((void *) getAbsoluteAddress("libil2cpp.so", 0x4F0618), (void *) &_destroy, (void **) &destroy);
     return NULL;
 }
 
