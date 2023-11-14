@@ -29,9 +29,7 @@
 #include "ESPManager.h"
 ESPManager *espManager;
 NepEsp es;
-
-#include <Substrate/SubstrateHook.h>
-#include <Substrate/CydiaSubstrate.h>
+#include "Includes/Macros.h"
 
 bool ESP, ESPLine;
 
@@ -51,6 +49,7 @@ void DrawESP(NepEsp esp, int screenWidth, int screenHeight) {
 
             //判断血量（是否存活
             if (PlayerAlive(Player)) {
+
                 //Code Goes Here
                 //获取玩家世界坐标
                 Vector3 PlayerPos = GetPlayerLocation(Player);
@@ -111,26 +110,27 @@ Java_uk_lgl_modmenu_FloatingModMenuService_DrawOn(JNIEnv *env, jclass type, jobj
     if (es.isValid()){
         DrawESP(es, es.getWidth(), es.getHeight());
     }
-
  }
 
-
 void *enemyPlayer = NULL;
-void (*update)(void *player);
+void (*update)(void *player) = NULL;
 void _update(void *player) {
     if (player != NULL) {
         update(player);
         enemyPlayer = player;
     }
     if (ESP) {
-        if (enemyPlayer) {
+        // 如果不是玩家自己，是其他实体(Bomber是官方bug，死了不清除）
+        if (enemyPlayer &&
+            false == getIsPlayer(enemyPlayer) &&
+            E_AgentType::Bomber != getAgentType(player)) {
             espManager->tryAddEnemy(player);
         }
         espManager->updateEnemies(NULL);
     }
 }
 
-void (*destroy)(void *player);
+void (*destroy)(void *player) = NULL;
 void _destroy(void *player) {
     if (player != NULL) {
         destroy(player);
@@ -140,9 +140,7 @@ void _destroy(void *player) {
 
 
 void *hack_thread(void *) {
-    ProcMap il2cppMap;
     do {
-        il2cppMap = KittyMemory::getLibraryMap("libil2cpp.so");
         sleep(1);
     } while (!isLibraryLoaded("libil2cpp.so") && mlovinit());
     espManager = new ESPManager();
@@ -151,9 +149,16 @@ void *hack_thread(void *) {
         sleep(1);
     } while (!isLibraryLoaded (OBFUSCATE("libMyLibName.so")));
 
+#if defined(__aarch64__)
+    HOOK_LIB("libil2cpp.so", "0xA21A90", _update, update);
+    HOOK_LIB("libil2cpp.so", "0xA21A58", _destroy, destroy);
+#else
+    HOOK_LIB("libil2cpp.so", "0x4F0650", _update, update);
+    HOOK_LIB("libil2cpp.so", "0x4F0618", _destroy, destroy);
+#endif
 
-    MSHookFunction((void *) getAbsoluteAddress("libil2cpp.so", 0x4F0650), (void *) &_update, (void **) &update);
-    MSHookFunction((void *) getAbsoluteAddress("libil2cpp.so", 0x4F0618), (void *) &_destroy, (void **) &destroy);
+
+
     return NULL;
 }
 
@@ -165,8 +170,6 @@ Java_uk_lgl_modmenu_FloatingModMenuService_getFeatureList(JNIEnv *env, jobject c
     const char *features[] = {
             OBFUSCATE("0_Toggle_Enable Esp"),//0
             OBFUSCATE("1_Toggle_ESP Line"),//1
-
-
     };
     int Total_Feature = (sizeof features / sizeof features[0]);
     ret = (jobjectArray)
@@ -184,20 +187,16 @@ JNIEXPORT void JNICALL
 Java_uk_lgl_modmenu_Preferences_Changes(JNIEnv *env, jclass clazz, jobject obj,
                                         jint featNum, jstring featName, jint value,
                                         jboolean boolean, jstring str) {
-
     switch (featNum) {
         case 0:
             ESP = boolean;
             break;
         case 1:
             ESPLine = boolean;
-
             break;
-
     }
 }
 }
-
 __attribute__((constructor))
 void lib_main() {
 

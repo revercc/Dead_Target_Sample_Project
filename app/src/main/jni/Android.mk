@@ -29,6 +29,7 @@ LOCAL_SRC_FILES := main.cpp \
 	KittyMemory/MemoryPatch.cpp \
     KittyMemory/MemoryBackup.cpp \
     KittyMemory/KittyUtils.cpp \
+    And64InlineHook/And64InlineHook.cpp \
 
 LOCAL_LDLIBS := -llog -landroid -lGLESv2
 
